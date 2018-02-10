@@ -1,7 +1,6 @@
 package fr.axicer.downloader;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
@@ -15,25 +14,27 @@ import org.json.simple.parser.JSONParser;
 
 public class PageDownloader extends Thread{
 	
-	private String term, page, folder;
+	private String term, page;
 	
-	public PageDownloader(String term, String page, String folder) {
+	public PageDownloader(String term, String page) {
 		this.term = term;
 		this.page = page;
-		this.folder = folder;
 	}
 	
 	@Override
 	public void run() {
 		super.run();
+		//create the JSON parser for this page
 		JSONParser parser = new JSONParser();
-		File folderfile = new File(System.getProperty("user.dir")+File.separator+folder);
-		if(!folderfile.exists())folderfile.mkdirs();
-        try {         
-            URL oracle = new URL("https://e621.net/post/index.json?tags="+term+"&page="+page); // each pages contains 75 images
-            URLConnection yc = oracle.openConnection();
-            BufferedReader in = new BufferedReader(new InputStreamReader(yc.getInputStream()));
+		//setting thread name for logging
+		String threadPrefix = "[Thread " + Thread.currentThread().getId() + " ] > ";
+        try {       
+        	//getting json data
+            URL jsonURL = new URL("https://e621.net/post/index.json?tags="+term+"&page="+page); // each pages contains 75 images
+            URLConnection JSONconnection = jsonURL.openConnection();
+            BufferedReader in = new BufferedReader(new InputStreamReader(JSONconnection.getInputStream()));
             
+            //reading data
             String inputLine;
             int count = 0;
             while ((inputLine = in.readLine()) != null) {               
@@ -43,34 +44,24 @@ public class PageDownloader extends Thread{
                 for (Object o : a) {
                 	JSONObject obj = (JSONObject)o;
                 	
+                	//logging this file
                 	String id = Long.toString((long)obj.get("id"));
-                	App.logger.info("[Thread "
-                						+ Thread.currentThread().getId()
-                						+ " ] > Downloading image "
-                						+ id
-                						+ " by "
-                						+ Long.toString((long)obj.get("creator_id"))
-                						+ "("
-                						+ obj.get("author")
-                						+ ")...");
+                	App.logger.info(threadPrefix + "Downloading image " + id + " by " + obj.get("author") + "(" + Long.toString((long)obj.get("creator_id")) + ")...");
                 	
+                	//downloading and copying file
                     URL website = new URL((String) obj.get("file_url"));
                     ReadableByteChannel rbc = Channels.newChannel(website.openStream());
-                    FileOutputStream fos = new FileOutputStream(folder+"/"+id+"."+(String)obj.get("file_ext"));
+                    FileOutputStream fos = new FileOutputStream(App.folder+"/"+id+"."+(String)obj.get("file_ext"));
                     fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
                     fos.close();
                     
+                    //more logging
                     count++;
-                    App.logger.info("[Thread "
-    						+ Thread.currentThread().getId()
-    						+ " ] > Downloaded.");
+                    App.logger.info(threadPrefix + "Downloaded.");
                 }
             }
-            App.logger.info("[Thread "
-                				+ Thread.currentThread().getId()
-                				+ " ] > End of download, downloaded "
-                				+ count
-                				+ " images, (page = "+page+")");
+            //when all pages are downloaded then log copied datas
+            App.logger.info(threadPrefix + "End of download, downloaded " + count + " images, (page = "+page+")");
             in.close();
             this.interrupt();
         } catch (Exception e) {
