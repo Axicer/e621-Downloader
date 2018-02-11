@@ -32,6 +32,7 @@ public class PageDownloader extends Thread{
         	//getting json data
             URL jsonURL = new URL("https://e621.net/post/index.json?tags="+term+"&page="+page); // each pages contains 75 images
             URLConnection JSONconnection = jsonURL.openConnection();
+            JSONconnection.setRequestProperty("User-Agent", "Axicer/e621-downloader/0.2 (by axicer)");
             BufferedReader in = new BufferedReader(new InputStreamReader(JSONconnection.getInputStream()));
             
             //reading data
